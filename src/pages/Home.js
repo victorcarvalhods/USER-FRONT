@@ -1,59 +1,114 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Card, Button, Row, Col } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import Card from 'react-bootstrap/Card';
+import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
 
-const IndexPage = () => {
-    const navigate = useNavigate();
-    const [logado, setLogado] = useState(false);
+const apiUrl = process.env.REACT_APP_API_URL;
 
-    useEffect(() => {
-        const usuario = JSON.parse(localStorage.getItem('usuario'));
-        if (usuario && usuario.token) {
-            setLogado(true);
-        } else {
-            setLogado(false);
-        }
-    }, []);
+function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [email, setEmail] = useState('');
+  const [searchedUser, setSearchedUser] = useState(null);
+  const navigate = useNavigate();
 
-    const handleLoginNavigate = () => {
-        navigate('/login');
-    };
 
-    const handleLogout = () => {
-        localStorage.removeItem('usuario');
-        localStorage.removeItem('token');
-        setLogado(false);
+  useEffect(() => {
+    const usuario = localStorage.getItem('usuario');
+    const token = localStorage.getItem('token');
+    if (usuario && token) {
+      setIsLoggedIn(true);
     }
+  }, []);
 
-    const handleRegistroNavigate = () => {
-        navigate('/registro');
-    };
 
-    return (
-        <Container className="d-flex justify-content-center align-items-center mt-5">
-            {logado ? (
-                <Card className='mt-5'>
-                    <Card.Body>Olá {localStorage.getItem('usuario')}</Card.Body>
-                    <Button type='button' variant='primary' onClick={handleLogout}>Logout</Button>
-                </Card>
-            ) : (
-                <Card className='mt-5'>
-                    <h3>Escolha uma das opções abaixo para realizar o login</h3>
-                    <Container className='space-between'>
-                        <Row>
-                            <Col>
-                                <Button type='button' variant='primary' onClick={handleLoginNavigate}>Login</Button>
-                            </Col>
-                            <Col className=''>
-                                <Button type='button' variant='success' onClick={handleRegistroNavigate}>Registrar-se</Button>
-                            </Col>
-                            
-                        </Row>
-                    </Container>
-                </Card>
+  const handleListUsers = async () => {
+    try {
+      const response = await axios.get(apiUrl+ 'users'); 
+      setUsers(response.data.users);
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+    }
+  };
+
+  const handleSearchByEmail = async () => {
+    try {
+      const response = await axios.get( apiUrl+ `user/${email}`); 
+      setSearchedUser(response.data.usuario);
+    } catch (error) {
+      console.error('Erro ao buscar usuário por email:', error);
+    }
+  };
+
+  const handleLogin = () => {
+    navigate('/login')
+  };
+
+  const handleClearSearch = () => {
+    setSearchedUser(null); // Limpa o resultado da busca anterior
+  };
+
+  return (
+    <div className="container mt-4">
+      <h1>Página Inicial</h1>
+      {!isLoggedIn ? (
+        <Button variant="primary" onClick={handleLogin}>
+          Fazer Login
+        </Button>
+      ) : (
+        <Card className="mt-4">
+          <Card.Body>
+            <Card.Title>Opções do Usuário</Card.Title>
+            <Button variant="primary" className="mr-2" onClick={handleListUsers}>
+              Listar Usuários
+            </Button>
+            <Button variant="primary" onClick={handleClearSearch}> {/* Adiciona a função handleClearSearch ao botão */}
+              Buscar Usuário por Email
+            </Button>
+            {searchedUser && (
+              <div className="mt-4">
+                <h5>Usuário Encontrado:</h5>
+                <p>Email: {searchedUser.email}, Criado em: {searchedUser.createdAt}</p>
+              </div>
             )}
-        </Container>
-    );
-};
+            {users.length > 0 && (
+              <div className="mt-4">
+                <h5>Lista de Usuários:</h5>
+                <ul>
+                  {users.map(user => (
+                    <li key={user.id}>
+                        Email: {user.email}, Criado em: {user.createdAt}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {searchedUser === null && users.length === 0 && (
+              <div className="mt-4">
+                <p>Nenhum usuário encontrado.</p>
+              </div>
+            )}
+            <Form className="mt-4">
+              <Form.Group controlId="formBasicEmail">
+                <Form.Label>Digite o email:</Form.Label>
+                <Form.Control
+                  type="email"
+                  placeholder="Digite o email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </Form.Group>
+              <Button variant="primary" onClick={handleSearchByEmail}>
+                Buscar
+              </Button>
+            </Form>
+          </Card.Body>
+        </Card>
+      )}
+    </div>
+  );
+}
 
-export default IndexPage;
+export default Home;
